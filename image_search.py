@@ -40,6 +40,7 @@ def _wikimedia(query):
             best = info
             break
         if not best:
+            print(f"[image] ויקישיתוף: אין תוצאה מתאימה ל-'{query}'")
             return None, None, None, None
 
         meta = best.get("extmetadata") or {}
@@ -88,14 +89,24 @@ def _pexels(query):
 
 def find_image(query):
     """מחזיר (image_bytes, file_name, credit, image_url) או (None,)*4."""
-    # ניסיון 1: ויקישיתוף עם השאילתה הספציפית (שם רוכב/אירוע)
-    result = _wikimedia(query)
-    if result[0]:
-        return result
-    # ניסיון 2: ויקישיתוף עם הקשר טור דה פראנס
-    if "tour de france" not in query.lower():
-        result = _wikimedia(f"{query} Tour de France")
+    words = query.split()
+    # ניסיונות בוויקישיתוף: מהשאילתה המלאה ועד שם הרוכב בלבד
+    attempts = [query]
+    if len(words) > 4:
+        attempts.append(" ".join(words[:4]))
+    if len(words) > 3:
+        attempts.append(" ".join(words[:3]))  # לרוב שם הרוכב המלא
+    attempts.append(" ".join(words[:3]) + " cyclist")
+    attempts.append("Tour de France peloton")
+
+    seen = set()
+    for q in attempts:
+        if q.lower() in seen:
+            continue
+        seen.add(q.lower())
+        result = _wikimedia(q)
         if result[0]:
             return result
-    # גיבוי: Pexels עם שאילתת מרוץ כביש
-    return _pexels(f"{query} road cycling race peloton")
+
+    # גיבוי אחרון: Pexels עם שאילתת מרוץ כביש
+    return _pexels("road cycling race peloton")
