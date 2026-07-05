@@ -41,24 +41,65 @@ def _send_photo(token, chat_id, image_bytes, file_name, caption):
     r.raise_for_status()
 
 
-def post_to_telegram(stories, date_str, html_path, image_bytes=None,
+def _feature_text(f):
+    """גוף מיני-הכתבה כטקסט טלגרם (בלי הפסקה הראשונה שהלכה לכיתוב התמונה)."""
+    parts = []
+    if f.get("top5_he"):
+        parts.append("<b>🏆 חמשת המובילים בדירוג הכללי</b>")
+        parts.extend(_esc(x) for x in f["top5_he"][:5])
+        parts.append("")
+    if f.get("jerseys_he"):
+        parts.append("<b>👕 לובשי החולצות</b>")
+        parts.extend(_esc(x) for x in f["jerseys_he"])
+        parts.append("")
+    if (f.get("next_stage_he") or "").strip():
+        parts.append("<b>🔮 מבט לשלב הבא</b>")
+        parts.append(_esc(f["next_stage_he"].strip()))
+        parts.append("")
+    return parts
+
+
+def post_to_telegram(feature, stories, date_str, html_path, image_bytes=None,
                      image_name=None, image_credit=""):
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
 
-    rest = stories
-    if image_bytes:
-        # תמונה ראשית + כיתוב: כותרת + הידיעה המובילה
+    parts = []
+    if feature:
+        recap = (feature.get("recap_he") or "").split("\n\n")
+        # תמונה + כותרת + פסקה ראשונה ככיתוב
+        caption = (f"<b>🚴‍♂️ {BRAND_TITLE} — {date_str}</b>\n\n"
+                   f"<b>{_esc(feature['title_he'])}</b>\n{_esc(recap[0] if recap else '')}")
+        if image_credit:
+            caption += f"\n<i>{_esc(image_credit)}</i>"
+        if image_bytes:
+            _send_photo(token, chat_id, image_bytes, image_name, caption[:1024])
+            print("[telegram] נשלחה תמונה ראשית")
+        else:
+            parts.append(caption)
+            parts.append("")
+        # המשך הכתבה
+        for para in recap[1:]:
+            if para.strip():
+                parts.append(_esc(para.strip()))
+                parts.append("")
+        parts.extend(_feature_text(feature))
+        if stories:
+            parts.append("<b>⚡ ובשאר עולם האופניים</b>")
+            parts.append("")
+        start = 1
+        rest = stories
+    elif image_bytes and stories:
         caption = f"<b>🚴‍♂️ {BRAND_TITLE} — {date_str}</b>\n\n" + _block(1, stories[0])
         if image_credit:
             caption += f"\n<i>{_esc(image_credit)}</i>"
-        _send_photo(token, chat_id, image_bytes, image_name, caption)
+        _send_photo(token, chat_id, image_bytes, image_name, caption[:1024])
         print("[telegram] נשלחה תמונה ראשית")
         rest = stories[1:]
-        parts = []
         start = 2
     else:
         parts = [f"<b>🚴‍♂️ {BRAND_TITLE} — {date_str}</b>", ""]
+        rest = stories
         start = 1
 
     for i, s in enumerate(rest, start):

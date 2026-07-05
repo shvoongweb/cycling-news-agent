@@ -18,6 +18,10 @@ article h2{margin:0 0 10px;font-size:1.25em;color:#16213e}
 article p{line-height:1.7;margin:0 0 12px}
 .src a{color:#0f3460;font-weight:600;text-decoration:none}
 .lead{border-right:5px solid #ffd200}
+.feature h2{font-size:1.5em}
+.feature h3{font-size:1.05em;color:#0f3460;margin:18px 0 8px;border-bottom:2px solid #ffd200;padding-bottom:4px;display:inline-block}
+.feature ul{margin:0;padding-right:20px;line-height:1.9}
+.brief-title{font-size:1.2em;color:#16213e;margin:24px 0 0;text-align:center}
 footer{text-align:center;color:#888;font-size:.85em;padding:20px 0}
 nav.arch{text-align:center;margin-top:10px}nav.arch a{color:#0f3460;margin:0 8px}
 """
@@ -27,10 +31,36 @@ def _esc(s):
     return html.escape(s or "")
 
 
-def build_page(stories, date_str, image_url=None, image_credit=""):
-    blocks = []
+def _feature_block(f):
+    """מיני-כתבת הטור דה פראנס."""
+    if not f:
+        return ""
+    parts = [f'<article class="lead feature"><h2>{_esc(f["title_he"])}</h2>']
+    for para in (f.get("recap_he") or "").split("\n\n"):
+        if para.strip():
+            parts.append(f"<p>{_esc(para.strip())}</p>")
+    if f.get("top5_he"):
+        parts.append("<h3>🏆 חמשת המובילים בדירוג הכללי</h3><ul>")
+        parts.extend(f"<li>{_esc(x)}</li>" for x in f["top5_he"][:5])
+        parts.append("</ul>")
+    if f.get("jerseys_he"):
+        parts.append("<h3>👕 לובשי החולצות</h3><ul>")
+        parts.extend(f"<li>{_esc(x)}</li>" for x in f["jerseys_he"])
+        parts.append("</ul>")
+    if (f.get("next_stage_he") or "").strip():
+        parts.append(f'<h3>🔮 מבט לשלב הבא</h3><p>{_esc(f["next_stage_he"].strip())}</p>')
+    parts.append(
+        f'<p class="src">🔗 <a href="{_esc(f["source_url"])}" target="_blank" rel="noopener">{_esc(f["source_name"])}</a></p></article>'
+    )
+    return "".join(parts)
+
+
+def build_page(feature, stories, date_str, image_url=None, image_credit=""):
+    blocks = [_feature_block(feature)]
+    if feature and stories:
+        blocks.append('<h2 class="brief-title">⚡ ובשאר עולם האופניים</h2>')
     for i, s in enumerate(stories, 1):
-        cls = "lead" if i == 1 else ""
+        cls = "lead" if (not feature and i == 1) else ""
         blocks.append(
             f'<article class="{cls}"><h2>{i}. {_esc(s["title_he"])}</h2>'
             f'<p>{_esc(s["paragraph_he"])}</p>'
@@ -77,13 +107,13 @@ def _rebuild_archive():
         f.write(page)
 
 
-def build_html(stories, image_url=None, image_credit=""):
+def build_html(feature, stories, image_url=None, image_credit=""):
     il_now = datetime.now(timezone.utc) + timedelta(hours=3)  # שעון ישראל (קיץ)
     date_str = il_now.strftime("%d.%m.%Y")
     file_date = il_now.strftime("%Y-%m-%d")
 
     os.makedirs(DOCS_DIR, exist_ok=True)
-    page = build_page(stories, date_str, image_url, image_credit)
+    page = build_page(feature, stories, date_str, image_url, image_credit)
 
     daily_path = os.path.join(DOCS_DIR, f"{file_date}.html")
     for path in (daily_path, os.path.join(DOCS_DIR, "index.html")):

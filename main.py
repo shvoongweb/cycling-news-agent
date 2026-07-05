@@ -15,18 +15,21 @@ def main():
         print("[main] אין ידיעות בחלון הזמן — מסיימים בלי לפרסם")
         return
 
-    stories = summarize(items)
-    if not stories:
-        print("[main] Gemini לא החזיר ידיעות — מסיימים")
+    feature, stories = summarize(items)
+    if not feature and not stories:
+        print("[main] Gemini לא החזיר תוכן — מסיימים")
         sys.exit(1)
 
-    keyword = stories[0].get("image_keyword") or "tour de france cycling"
+    keyword = ((feature or {}).get("image_keyword")
+               or (stories[0].get("image_keyword") if stories else "")
+               or "tour de france cycling")
     img_bytes, img_name, img_credit, img_url = find_image(keyword)
 
-    html_path, date_str = build_html(stories, img_url, img_credit or "")
+    html_path, date_str = build_html(feature, stories, img_url, img_credit or "")
 
     try:
-        post_to_telegram(stories, date_str, html_path, img_bytes, img_name, img_credit or "")
+        post_to_telegram(feature, stories, date_str, html_path,
+                         img_bytes, img_name, img_credit or "")
     except Exception as ex:
         print(f"[main] שליחת טלגרם נכשלה: {ex}")
         sys.exit(1)
