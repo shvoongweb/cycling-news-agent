@@ -31,12 +31,37 @@ def _pages_url():
     return ""
 
 
-def post_to_telegram(stories, date_str, html_path):
+def _send_photo(token, chat_id, image_bytes, file_name, caption):
+    r = requests.post(
+        API.format(token=token, method="sendPhoto"),
+        data={"chat_id": chat_id, "caption": caption[:1024], "parse_mode": "HTML"},
+        files={"photo": (file_name or "image.jpg", image_bytes, "image/jpeg")},
+        timeout=60,
+    )
+    r.raise_for_status()
+
+
+def post_to_telegram(stories, date_str, html_path, image_bytes=None,
+                     image_name=None, image_credit=""):
     token = os.environ["TELEGRAM_BOT_TOKEN"]
     chat_id = os.environ["TELEGRAM_CHAT_ID"]
 
-    parts = [f"<b>🚴‍♂️ {BRAND_TITLE} — {date_str}</b>", ""]
-    for i, s in enumerate(stories, 1):
+    rest = stories
+    if image_bytes:
+        # תמונה ראשית + כיתוב: כותרת + הידיעה המובילה
+        caption = f"<b>🚴‍♂️ {BRAND_TITLE} — {date_str}</b>\n\n" + _block(1, stories[0])
+        if image_credit:
+            caption += f"\n<i>{_esc(image_credit)}</i>"
+        _send_photo(token, chat_id, image_bytes, image_name, caption)
+        print("[telegram] נשלחה תמונה ראשית")
+        rest = stories[1:]
+        parts = []
+        start = 2
+    else:
+        parts = [f"<b>🚴‍♂️ {BRAND_TITLE} — {date_str}</b>", ""]
+        start = 1
+
+    for i, s in enumerate(rest, start):
         parts.append(_block(i, s))
         parts.append("")
     url = _pages_url()

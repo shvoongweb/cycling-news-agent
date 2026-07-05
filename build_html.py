@@ -27,7 +27,7 @@ def _esc(s):
     return html.escape(s or "")
 
 
-def build_page(stories, date_str):
+def build_page(stories, date_str, image_url=None, image_credit=""):
     blocks = []
     for i, s in enumerate(stories, 1):
         cls = "lead" if i == 1 else ""
@@ -42,10 +42,21 @@ def build_page(stories, date_str):
 <title>{_esc(BRAND_TITLE)} — {date_str}</title><style>{CSS}</style></head>
 <body><div class="wrap">
 <header><h1>🚴‍♂️ {_esc(BRAND_TITLE)}</h1><div class="date">{date_str}</div></header>
+{_hero(image_url, image_credit)}
 {''.join(blocks)}
 <nav class="arch"><a href="index.html">הכתבה האחרונה</a> · <a href="archive.html">ארכיון</a></nav>
 <footer>נוצר אוטומטית · הסיכומים בניסוח מקורי, קישור למקור בכל ידיעה</footer>
 </div></body></html>"""
+
+
+def _hero(image_url, credit):
+    if not image_url:
+        return ""
+    return (
+        f'<figure style="margin:16px 0 0"><img src="{_esc(image_url)}" alt="" '
+        f'style="width:100%;border-radius:12px;display:block">'
+        f'<figcaption style="color:#888;font-size:.8em;text-align:left;margin-top:4px">{_esc(credit)}</figcaption></figure>'
+    )
 
 
 def _rebuild_archive():
@@ -66,13 +77,13 @@ def _rebuild_archive():
         f.write(page)
 
 
-def build_html(stories):
+def build_html(stories, image_url=None, image_credit=""):
     il_now = datetime.now(timezone.utc) + timedelta(hours=3)  # שעון ישראל (קיץ)
     date_str = il_now.strftime("%d.%m.%Y")
     file_date = il_now.strftime("%Y-%m-%d")
 
     os.makedirs(DOCS_DIR, exist_ok=True)
-    page = build_page(stories, date_str)
+    page = build_page(stories, date_str, image_url, image_credit)
 
     daily_path = os.path.join(DOCS_DIR, f"{file_date}.html")
     for path in (daily_path, os.path.join(DOCS_DIR, "index.html")):
