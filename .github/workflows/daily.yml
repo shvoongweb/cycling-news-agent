@@ -2,7 +2,7 @@ name: daily-cycling-news
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # 03:00 UTC = 06:00 Israel (summer)
+    - cron: "42 2 * * *"  # 02:42 UTC = 05:42 Israel summer (off-peak minute)
   workflow_dispatch: {}
 
 permissions:
