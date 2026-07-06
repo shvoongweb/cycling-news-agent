@@ -2,6 +2,7 @@
 """חיפוש תמונה: קודם ויקישיתוף (תמונות אמיתיות של הרוכבים, רישיון חופשי),
 ואז Pexels כגיבוי (סטוק מרוץ כביש)."""
 import os
+import random
 import re
 
 import requests
@@ -22,7 +23,7 @@ def _wikimedia(query):
                 "action": "query", "format": "json",
                 "generator": "search",
                 "gsrsearch": f"filetype:bitmap {query}",
-                "gsrnamespace": 6, "gsrlimit": 8,
+                "gsrnamespace": 6, "gsrlimit": 20,
                 "prop": "imageinfo",
                 "iiprop": "url|extmetadata|size",
                 "iiurlwidth": 1280,
@@ -31,17 +32,18 @@ def _wikimedia(query):
         )
         r.raise_for_status()
         pages = (r.json().get("query") or {}).get("pages") or {}
-        best = None
+        candidates = []
         for p in sorted(pages.values(), key=lambda x: x.get("index", 99)):
             info = (p.get("imageinfo") or [{}])[0]
             w, h = info.get("width", 0), info.get("height", 0)
             if w < 640 or h < 360 or h > w * 1.2:  # מעדיפים תמונה רוחבית סבירה
                 continue
-            best = info
-            break
-        if not best:
+            candidates.append(info)
+        if not candidates:
             print(f"[image] ויקישיתוף: אין תוצאה מתאימה ל-'{query}'")
             return None, None, None, None
+        # בחירה אקראית מתוך המועמדות המובילות — כדי שלא תחזור אותה תמונה כל יום
+        best = random.choice(candidates[:8])
 
         meta = best.get("extmetadata") or {}
         artist = _clean_html((meta.get("Artist") or {}).get("value", ""))[:60]
@@ -67,7 +69,7 @@ def _pexels(query):
         r = requests.get(
             "https://api.pexels.com/v1/search",
             headers={"Authorization": key},
-            params={"query": query, "per_page": 1, "orientation": "landscape"},
+            params={"query": query, "per_page": 15, "orientation": "landscape"},
             timeout=20,
         )
         r.raise_for_status()
@@ -75,7 +77,7 @@ def _pexels(query):
         if not photos:
             print(f"[image] Pexels: לא נמצאה תמונה ל-'{query}'")
             return None, None, None, None
-        photo = photos[0]
+        photo = random.choice(photos)  # גיוון — לא תמיד התוצאה הראשונה
         img_url = photo["src"].get("large2x") or photo["src"]["large"]
         credit = f'צילום: {photo.get("photographer", "Pexels")} / Pexels'
         img = requests.get(img_url, timeout=30)
@@ -108,5 +110,12 @@ def find_image(query):
         if result[0]:
             return result
 
-    # גיבוי אחרון: Pexels עם שאילתת מרוץ כביש
-    return _pexels("road cycling race peloton")
+    # גיבוי אחרון: Pexels עם שאילתה מתחלפת
+    fallback = random.choice([
+        "road cycling race peloton",
+        "professional cycling race",
+        "cyclists climbing mountain road race",
+        "cycling sprint finish race",
+        "peloton france cycling",
+    ])
+    return _pexels(fallback)
