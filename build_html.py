@@ -40,7 +40,7 @@ def _feature_block(f):
         if para.strip():
             parts.append(f"<p>{_esc(para.strip())}</p>")
     if f.get("top5_he"):
-        parts.append("<h3>🏆 חמשת המובילים בדירוג הכללי</h3><ul>")
+        parts.append("<h3>🏆 הדירוג הכללי</h3><ul>")
         parts.extend(f"<li>{_esc(x)}</li>" for x in f["top5_he"][:5])
         parts.append("</ul>")
     if f.get("jerseys_he"):
