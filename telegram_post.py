@@ -44,17 +44,21 @@ def _send_photo(token, chat_id, image_bytes, file_name, caption):
 def _feature_text(f):
     """גוף מיני-הכתבה כטקסט טלגרם (בלי הפסקה הראשונה שהלכה לכיתוב התמונה)."""
     parts = []
+    if (f.get("next_stage_he") or "").strip():
+        parts.append("<b>🔮 מתכוננים לקטע הבא</b>")
+        parts.append(_esc(f["next_stage_he"].strip()))
+        parts.append("")
+    if f.get("stage_top5_he"):
+        parts.append("<b>🏁 חמשת הראשונים בקטע</b>")
+        parts.extend(_esc(x) for x in f["stage_top5_he"][:5])
+        parts.append("")
     if f.get("top5_he"):
-        parts.append("<b>🏆 חמשת המובילים בדירוג הכללי</b>")
+        parts.append("<b>🏆 דירוג כללי לאחר הקטע</b>")
         parts.extend(_esc(x) for x in f["top5_he"][:5])
         parts.append("")
     if f.get("jerseys_he"):
-        parts.append("<b>👕 לובשי החולצות</b>")
+        parts.append("<b>👕 לובשי החולצות לאחר הקטע</b>")
         parts.extend(_esc(x) for x in f["jerseys_he"])
-        parts.append("")
-    if (f.get("next_stage_he") or "").strip():
-        parts.append("<b>🔮 מבט לשלב הבא</b>")
-        parts.append(_esc(f["next_stage_he"].strip()))
         parts.append("")
     return parts
 
@@ -85,7 +89,7 @@ def post_to_telegram(feature, stories, date_str, html_path, image_bytes=None,
                 parts.append("")
         parts.extend(_feature_text(feature))
         if stories:
-            parts.append("<b>⚡ ובשאר עולם האופניים</b>")
+            parts.append("<b>⚡ שאר ההיליטים של עולם האופניים</b>")
             parts.append("")
         start = 1
         rest = stories
