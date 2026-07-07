@@ -39,16 +39,20 @@ def _feature_block(f):
     for para in (f.get("recap_he") or "").split("\n\n"):
         if para.strip():
             parts.append(f"<p>{_esc(para.strip())}</p>")
+    if (f.get("next_stage_he") or "").strip():
+        parts.append(f'<h3>🔮 מתכוננים לקטע הבא</h3><p>{_esc(f["next_stage_he"].strip())}</p>')
+    if f.get("stage_top5_he"):
+        parts.append("<h3>🏁 חמשת הראשונים בקטע</h3><ul>")
+        parts.extend(f"<li>{_esc(x)}</li>" for x in f["stage_top5_he"][:5])
+        parts.append("</ul>")
     if f.get("top5_he"):
-        parts.append("<h3>🏆 הדירוג הכללי</h3><ul>")
+        parts.append("<h3>🏆 דירוג כללי לאחר הקטע</h3><ul>")
         parts.extend(f"<li>{_esc(x)}</li>" for x in f["top5_he"][:5])
         parts.append("</ul>")
     if f.get("jerseys_he"):
-        parts.append("<h3>👕 לובשי החולצות</h3><ul>")
+        parts.append("<h3>👕 לובשי החולצות לאחר הקטע</h3><ul>")
         parts.extend(f"<li>{_esc(x)}</li>" for x in f["jerseys_he"])
         parts.append("</ul>")
-    if (f.get("next_stage_he") or "").strip():
-        parts.append(f'<h3>🔮 מבט לשלב הבא</h3><p>{_esc(f["next_stage_he"].strip())}</p>')
     parts.append(
         f'<p class="src">🔗 <a href="{_esc(f["source_url"])}" target="_blank" rel="noopener">{_esc(f["source_name"])}</a></p></article>'
     )
@@ -58,7 +62,7 @@ def _feature_block(f):
 def build_page(feature, stories, date_str, image_url=None, image_credit=""):
     blocks = [_feature_block(feature)]
     if feature and stories:
-        blocks.append('<h2 class="brief-title">⚡ ובשאר עולם האופניים</h2>')
+        blocks.append('<h2 class="brief-title">⚡ שאר ההיליטים של עולם האופניים</h2>')
     for i, s in enumerate(stories, 1):
         cls = "lead" if (not feature and i == 1) else ""
         blocks.append(

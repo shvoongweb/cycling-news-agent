@@ -14,6 +14,31 @@ def _clean_html(s):
     return re.sub(r"<[^>]+>", "", s or "").strip()
 
 
+def from_source(img_url, source_name):
+    """תמונת הקטע מהכתבה עצמה (צילום אמיתי מהיום) — עדיפה על סטוק גנרי."""
+    if not img_url:
+        return None, None, None, None
+    try:
+        base = img_url.split("?")[0].lower()
+        ext = next((e for e in (".jpg", ".jpeg", ".png", ".webp") if base.endswith(e)), "")
+        r = requests.get(img_url, headers={"User-Agent": "Mozilla/5.0 (cycling-news-agent)"}, timeout=30)
+        r.raise_for_status()
+        ctype = r.headers.get("Content-Type", "").lower()
+        if "image" not in ctype and not ext:
+            print(f"[image] תמונת מקור אינה תמונה ({ctype or 'ללא סוג'})")
+            return None, None, None, None
+        if len(r.content) < 12000:  # תמונות זעירות/placeholder — לא ראויות לירו
+            print("[image] תמונת מקור קטנה מדי — מדלגים")
+            return None, None, None, None
+        fmt = ext.lstrip(".") or ("png" if "png" in ctype else "webp" if "webp" in ctype else "jpg")
+        credit = f"צילום: {source_name}" if source_name else "צילום מהכתבה במקור"
+        print(f"[image] נעשה שימוש בתמונת הקטע מהמקור ({source_name})")
+        return r.content, f"stage-photo.{fmt}", credit, img_url
+    except Exception as e:
+        print(f"[image] תמונת מקור נכשלה: {e}")
+        return None, None, None, None
+
+
 def _wikimedia(query):
     """תמונה חופשית אמיתית מוויקישיתוף לפי שם רוכב/אירוע."""
     try:
