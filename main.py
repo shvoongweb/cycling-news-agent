@@ -1,12 +1,14 @@
 # -*- coding: utf-8 -*-
-"""תזמור הצינור: איסוף ← Gemini ← HTML ← טלגרם."""
+"""תזמור הצינור: איסוף ← דירוגים רשמיים ← Gemini ← HTML ← טלגרם."""
 import sys
 
 from fetch_news import fetch_all
+from standings import fetch_standings
 from summarize import summarize
 from image_search import find_image
 from build_html import build_html
 from telegram_post import post_to_telegram
+from config import TDF_FOCUS
 
 
 def main():
@@ -15,7 +17,8 @@ def main():
         print("[main] אין ידיעות בחלון הזמן — מסיימים בלי לפרסם")
         return
 
-    feature, stories = summarize(items)
+    standings = fetch_standings() if TDF_FOCUS else None
+    feature, stories = summarize(items, standings)
     if not feature and not stories:
         print("[main] Gemini לא החזיר תוכן — מסיימים")
         sys.exit(1)
