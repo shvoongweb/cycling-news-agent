@@ -2,6 +2,7 @@
 """שלב 2: Gemini — מיני-כתבת טור דה פראנס + ידיעות קצרות, בעברית."""
 import json
 import os
+import time
 
 import requests
 
@@ -33,7 +34,7 @@ PROMPT_TDF = """אתה עורך חדשות אופניים מקצועי הכות�
 - ניסוח מקורי לחלוטין — לא תרגום מילולי.
 - אם אין בכלל ידיעות על הטור דה פראנס: "tdf_feature": null, ו-"stories" יכיל {n_alt} ידיעות.
 
-החזר JSON בלבד:
+החזר JSON תקין בלבד (ללא טקסט נוסף וללא סימוני קוד):
 {{"tdf_feature": {{...}} או null, "stories": [...]}}
 
 הידיעות:
@@ -49,6 +50,27 @@ PROMPT_REGULAR = """אתה עורך חדשות אופניים מקצועי הכ�
 """
 
 
+def _clean_json(text):
+    """חילוץ JSON תקין גם אם המודל עטף בטקסט/סימוני קוד."""
+    text = text.strip()
+    start = text.find("{")
+    end = text.rfind("}")
+    if start != -1 and end != -1 and end > start:
+        text = text[start:end + 1]
+    return json.loads(text)
+
+
+def _ask_gemini(prompt, key):
+    body = {
+        "contents": [{"parts": [{"text": prompt}]}],
+        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.4},
+    }
+    r = requests.post(API_URL.format(model=GEMINI_MODEL, key=key), json=body, timeout=180)
+    r.raise_for_status()
+    text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
+    return _clean_json(text)
+
+
 def summarize(items, standings=None):
     key = os.environ["GEMINI_API_KEY"]
     template = PROMPT_TDF if TDF_FOCUS else PROMPT_REGULAR
@@ -59,14 +81,20 @@ def summarize(items, standings=None):
     if standings:
         prompt += ("\n\n--- דירוג רשמי מ-letour.fr (מקור סמכות — השתמש בו לפני הכל "
                    "עבור top5_he ו-jerseys_he) ---\n" + standings)
-    body = {
-        "contents": [{"parts": [{"text": prompt}]}],
-        "generationConfig": {"responseMimeType": "application/json", "temperature": 0.4},
-    }
-    r = requests.post(API_URL.format(model=GEMINI_MODEL, key=key), json=body, timeout=180)
-    r.raise_for_status()
-    text = r.json()["candidates"][0]["content"]["parts"][0]["text"]
-    data = json.loads(text)
+
+    data = None
+    last_err = None
+    for attempt in range(1, 4):
+        try:
+            data = _ask_gemini(prompt, key)
+            break
+        except (requests.RequestException, json.JSONDecodeError, KeyError) as ex:
+            last_err = ex
+            print(f"[gemini] ניסיון {attempt}/3 נכשל: {ex}")
+            time.sleep(4)
+    if data is None:
+        raise last_err
+
     feature = data.get("tdf_feature")
     stories = data.get("stories") or []
     print(f"[gemini] כתבה ראשית: {'כן' if feature else 'אין'} | ידיעות קצרות: {len(stories)}")
