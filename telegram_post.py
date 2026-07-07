@@ -31,11 +31,16 @@ def _pages_url():
     return ""
 
 
+_MIME = {"png": "image/png", "webp": "image/webp", "jpg": "image/jpeg", "jpeg": "image/jpeg"}
+
+
 def _send_photo(token, chat_id, image_bytes, file_name, caption):
+    ext = (file_name or "image.jpg").rsplit(".", 1)[-1].lower()
+    mime = _MIME.get(ext, "image/jpeg")
     r = requests.post(
         API.format(token=token, method="sendPhoto"),
         data={"chat_id": chat_id, "caption": caption[:1024], "parse_mode": "HTML"},
-        files={"photo": (file_name or "image.jpg", image_bytes, "image/jpeg")},
+        files={"photo": (file_name or "image.jpg", image_bytes, mime)},
         timeout=60,
     )
     r.raise_for_status()

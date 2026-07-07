@@ -21,6 +21,38 @@ def _entry_time(entry):
     return None
 
 
+def _entry_image(entry):
+    """תמונת הכתבה עצמה מהפיד — צילום אמיתי מהקטע/האירוע, לא סטוק גנרי."""
+    # media:content — נבחר את הרחב ביותר (איכות גבוהה)
+    best, best_w = None, -1
+    for mc in (entry.get("media_content") or []):
+        url = mc.get("url")
+        typ = (mc.get("type") or "")
+        if not url or (typ and not typ.startswith("image")):
+            continue
+        try:
+            w = int(mc.get("width") or 0)
+        except (TypeError, ValueError):
+            w = 0
+        if w >= best_w:
+            best, best_w = url, w
+    if best:
+        return best
+    for mt in (entry.get("media_thumbnail") or []):
+        if mt.get("url"):
+            return mt["url"]
+    for enc in (entry.get("enclosures") or []):
+        if (enc.get("type") or "").startswith("image") and enc.get("href"):
+            return enc["href"]
+    # גיבוי: <img> ראשון בגוף הידיעה
+    blob = ""
+    if entry.get("content"):
+        blob = entry["content"][0].get("value", "")
+    blob = blob or entry.get("summary") or ""
+    m = re.search(r'<img[^>]+src=["\']([^"\']+)["\']', blob)
+    return m.group(1) if m else None
+
+
 def fetch_all():
     cutoff = datetime.now(timezone.utc) - timedelta(hours=HOURS_WINDOW)
     items = []
@@ -37,6 +69,7 @@ def fetch_all():
                     "summary": (e.get("summary") or "")[:600],
                     "url": e.get("link") or src["site"],
                     "published": ts.isoformat(),
+                    "image": _entry_image(e),
                 }
                 # לידיעות טור דה פראנס: מוסיפים טקסט מורחב (לדירוגים, חולצות וצפי)
                 blob = (item["title"] + " " + item["summary"]).lower()

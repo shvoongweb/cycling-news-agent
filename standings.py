@@ -55,7 +55,8 @@ def fetch_standings():
                 continue
             txt = _to_text(r.text)
             i = txt.find("Rank Rider")
-            snippet = txt[i:i + 650] if i >= 0 else txt[:650]
+            # קטע ארוך דיו כדי לכלול את עמודת הזמן/פער של 5 המקומות הראשונים
+            snippet = txt[i:i + 850] if i >= 0 else txt[:850]
             blocks.append(f"### {label}\n{snippet}")
 
         if not blocks:
