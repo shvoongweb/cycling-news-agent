@@ -3,7 +3,7 @@ name: daily-cycling-news
 on:
   schedule:
     - cron: "3 7 * * *"   # 07:03 UTC = 10:03 Israel morning (summer)
-    - cron: "33 15 * * *" # 15:33 UTC = 18:33 Israel evening (summer)
+    - cron: "30 16 * * *" # 16:30 UTC = 19:30 Israel evening (summer) — אחרי סיום הקטע, כשיש כבר סיקור באתרים
   workflow_dispatch: {}
 
 permissions:
